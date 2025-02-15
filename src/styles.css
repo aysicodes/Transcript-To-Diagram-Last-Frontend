@@ -1,0 +1,93 @@
+/* Общий контейнер для форм */
+.register-container, .login-container {
+    max-width: 350px;
+    margin: 100px auto;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    background: #f4f4f4; /* Светло-серый фон */
+    box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Заголовки */
+h2 {
+    margin-bottom: 20px;
+    font-size: 22px;
+    color: #333; /* Тёмно-серый цвет текста */
+}
+
+/* Поля ввода */
+input {
+    width: 100%;
+    padding: 12px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+    background: #fff; /* Белый фон */
+    transition: 0.3s;
+    box-sizing: border-box; /* Включаем padding и border в ширину */
+}
+
+input:focus {
+    border-color: #6a5acd; /* Светло-фиолетовая обводка при фокусе */
+    outline: none;
+}
+
+/* Кнопки */
+button {
+    width: 100%;
+    padding: 12px;
+    background: #6a5acd; /* Спокойный фиолетовый цвет */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s ease;
+}
+
+button:hover {
+    background: #483d8b; /* Более тёмный оттенок при наведении */
+}
+
+/* Ошибки */
+.error-message {
+    color: red;
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+/* Ссылки */
+p span {
+    color: #6a5acd;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+p span:hover {
+    text-decoration: underline;
+}
+
+/* Задний фон всей страницы */
+/* Задний фон всей страницы */
+body {
+    background: linear-gradient(135deg, #8b0000, #00008b); /* Темный красный и темный синий */
+    font-family: "Arial", sans-serif;
+}
+
+
+/* Стили для логотипа */
+.logo {
+    position: absolute;
+    top: 10px;
+    left: 20px;
+}
+
+.logo img {
+    width: 10px; /* Задайте желаемую ширину */
+    height: auto; /* Автоматическая высота для сохранения пропорций */
+  }
+  
+
+  
