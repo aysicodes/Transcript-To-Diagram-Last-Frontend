@@ -7,6 +7,8 @@ import profileIcon from "../assets/free-icon-student-4211262.png";
 import logoutIcon from "../assets/exit.png";
 import "./Home.css";
 
+const API_URL = "http://localhost:8089";
+
 const Home = () => {
   const navigate = useNavigate();
   const [selectedCourses, setSelectedCourses] = useState({});
@@ -16,15 +18,15 @@ const Home = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [newSubjectName, setNewSubjectName] = useState("");
+  const [courseBoxes, setCourseBoxes] = useState([1, 2, 3]);
 
-  // Получаем токен из localStorage
   const token = localStorage.getItem("token");
 
   // Загрузка предметов
   useEffect(() => {
     const fetchSubjects = async () => {
       try {
-        const response = await fetch("http://localhost:8089/subjects", {
+        const response = await fetch(`${API_URL}/subjects`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -33,7 +35,6 @@ const Home = () => {
           throw new Error("Network response was not ok");
         }
         const data = await response.json();
-        console.log("Fetched Subjects:", data); // Логируем загруженные предметы
         setSubjects(data);
       } catch (error) {
         setError(error);
@@ -48,7 +49,7 @@ const Home = () => {
   // Сохранение данных на сервер
   const saveData = async () => {
     try {
-      const response = await fetch("http://localhost:8089/api/save-data", {
+      const response = await fetch(`${API_URL}/api/save-data`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -74,7 +75,7 @@ const Home = () => {
     }
   };
 
-  // Обработчик выбора предмета
+  // Обработчик выбора курса
   const handleCourseSelect = (boxIndex, subjectId) => {
     const selectedSubject = subjects.find((subject) => subject.id === parseInt(subjectId));
     setSelectedCourses({ ...selectedCourses, [boxIndex]: selectedSubject });
@@ -89,7 +90,7 @@ const Home = () => {
 
   // Обработчик визуализации
   const handleVisualize = () => {
-    if (Object.keys(selectedCourses).length === 3 && Object.keys(courseScores).length === 3) {
+    if (Object.keys(selectedCourses).length === courseBoxes.length && Object.keys(courseScores).length === courseBoxes.length) {
       const isValid = Object.values(selectedCourses).every((course) => course && course.id);
       if (!isValid) {
         alert("Please select valid courses.");
@@ -97,9 +98,9 @@ const Home = () => {
       }
 
       setShowChart(true);
-      saveData(); // Сохраняем данные перед визуализацией
+      saveData();
     } else {
-      alert("Please select exactly three courses and enter their grades.");
+      alert(`Please select exactly ${courseBoxes.length} courses and enter their grades.`);
     }
   };
 
@@ -111,7 +112,7 @@ const Home = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:8089/subjects", {
+      const response = await fetch(`${API_URL}/subjects`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -130,6 +131,14 @@ const Home = () => {
     } catch (error) {
       setError(error);
     }
+  };
+
+  // Обработчик добавления нового окна для курса
+  const handleAddCourseBox = () => {
+    const newBoxIndex = courseBoxes.length + 1;
+    setCourseBoxes([...courseBoxes, newBoxIndex]);
+    setSelectedCourses({ ...selectedCourses, [newBoxIndex]: null });
+    setCourseScores({ ...courseScores, [newBoxIndex]: "" });
   };
 
   // Расчет данных для графика
@@ -169,7 +178,6 @@ const Home = () => {
       ],
     };
 
-    console.log("Chart Data:", chartData); // Логируем данные для графика
     return chartData;
   };
 
@@ -205,7 +213,7 @@ const Home = () => {
       </header>
 
       <div className="course-selection">
-        <h2 className="section-title">Select Three Courses and Their Grades</h2>
+        <h2 className="section-title">Select Courses and Their Grades</h2>
         <div className="add-subject">
           <input
             type="text"
@@ -216,7 +224,7 @@ const Home = () => {
           <button onClick={handleAddSubject}>+ Add Subject</button>
         </div>
         <div className="course-grid">
-          {[1, 2, 3].map((boxIndex) => (
+          {courseBoxes.map((boxIndex) => (
             <div key={boxIndex} className="course-box">
               <select
                 className="course-select"
@@ -241,11 +249,14 @@ const Home = () => {
               />
             </div>
           ))}
+          <button className="add-course-box" onClick={handleAddCourseBox}>
+            + Add Course
+          </button>
         </div>
         <button
           className="visualize-button"
           onClick={handleVisualize}
-          disabled={Object.keys(selectedCourses).length !== 3 || Object.keys(courseScores).length !== 3}
+          disabled={Object.keys(selectedCourses).length !== courseBoxes.length || Object.keys(courseScores).length !== courseBoxes.length}
         >
           Visualize Competencies
         </button>
