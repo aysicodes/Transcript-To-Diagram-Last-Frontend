@@ -1,0 +1,8 @@
+/* Подключаем глобальные стили из styles.css */
+@import './styles.css';
+
+/* Дополнительные глобальные стили можно добавить сюда, если нужно */
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
