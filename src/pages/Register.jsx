@@ -13,7 +13,7 @@ function Register() {
     setError("");
 
     try {
-      const response = await fetch("http://localhost:8089/api/register", {
+      const response = await fetch("/api/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -36,7 +36,12 @@ function Register() {
       }
 
       console.log("Регистрация успешна:", responseData);
-      navigate("/home"); // Перенаправление на страницу home после успешной регистрации
+      
+      // Save email and password to localStorage for first-time login auto-fill
+      localStorage.setItem("email", email);
+      localStorage.setItem("password", password);
+
+      navigate("/login"); // Перенаправление на страницу home после успешной регистрации
     } catch (error) {
       console.error("Ошибка регистрации:", error.message);
       setError(error.message);
@@ -47,7 +52,6 @@ function Register() {
 
   return (
     <div className="register-container">
-      {/* Логотип */}
       <div className="logo-container flex justify-center">
         <img
           src="/Ala-too_International_University_Seal.png"

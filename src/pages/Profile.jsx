@@ -23,7 +23,7 @@ const Profile = () => {
       }
 
       try {
-        const response = await fetch("http://localhost:8089/api/me", {
+        const response = await fetch("/api/me", {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -58,8 +58,10 @@ const Profile = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("email"); // Удаляем email при выходе
     navigate("/login");
   };
+  
 
   const handleHome = () => {
     navigate("/home");
@@ -69,29 +71,40 @@ const Profile = () => {
     setEditMode(true);
   };
 
+  const handleCancelEdit = () => {
+    // Возврат в режим просмотра без сохранения изменений
+    setEditMode(false);
+    setFormData({ email: student.email, password: "" });
+  };
+
   const handleDeleteAccount = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
       navigate("/login");
       return;
     }
-
+  
+    const confirmation = window.confirm("Are you sure you want to delete your account? This action cannot be undone.");
+    if (!confirmation) return;
+  
     try {
-      const response = await fetch("http://localhost:8089/api/delete", {
+      const response = await fetch("/api/delete", {
         method: "DELETE",
         headers: { "Authorization": `Bearer ${token}` },
       });
-
+  
       if (!response.ok) {
         if (response.status === 401) {
           setError("Session expired. Please log in again.");
           localStorage.removeItem("token");
+          localStorage.removeItem("email"); // Удаляем email при удалении аккаунта
           navigate("/login");
         } else {
           throw new Error("Failed to delete account");
         }
       } else {
         localStorage.removeItem("token");
+        localStorage.removeItem("email"); // Удаляем email при удалении аккаунта
         setMessage("Your account has been deleted successfully!");
         setTimeout(() => navigate("/register"), 3000);
       }
@@ -99,6 +112,7 @@ const Profile = () => {
       setError(error.message);
     }
   };
+  
 
   const handleSaveChanges = async () => {
     const token = localStorage.getItem("token");
@@ -112,7 +126,7 @@ const Profile = () => {
     }
 
     try {
-      const response = await fetch("http://localhost:8089/api/update", {
+      const response = await fetch("/api/update", {
         method: "PUT",
         headers: {
           "Authorization": `Bearer ${token}`,
@@ -192,9 +206,14 @@ const Profile = () => {
                 <Home size={20} /> Home
               </button>
               {editMode ? (
-                <button className="save-button" onClick={handleSaveChanges}>
-                  Save Changes
-                </button>
+                <div>
+                  <button className="save-button" onClick={handleSaveChanges}>
+                    Save Changes
+                  </button>
+                  <button className="cancel-button" onClick={handleCancelEdit}>
+                    Cancel
+                  </button>
+                </div>
               ) : (
                 <button className="edit-button" onClick={handleEdit}>
                   Edit Profile

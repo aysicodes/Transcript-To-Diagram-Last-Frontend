@@ -42,14 +42,51 @@
   font-size: 24px;
 }
 
-/* Update button colors to match university theme */
-.edit-button, .save-button {
-  background-color: #003087; /* ALA-TOO blue color */
+.cancel-button {
+  background-color: #f0f0f0;
+  color: #333;
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.cancel-button:hover {
+  background-color: #e0e0e0;
+}
+
+.save-button, .edit-button, .logout-button, .delete-button {
+  padding: 10px 20px;
+  margin-right: 10px;
+  border-radius: 4px;
+}
+
+.save-button {
+  background-color: #4CAF50;
   color: white;
 }
 
-.edit-button:hover, .save-button:hover {
-  background-color: #002266;
+.edit-button {
+  background-color: #0015ffdd;
+  color: white;
+}
+
+.logout-button {
+  background-color: #FF6347;
+  color: white;
+}
+
+.delete-button {
+  background-color: #DC143C;
+  color: white;
+}
+
+button:hover {
+  opacity: 0.8;
+}
+
+button:disabled {
+  cursor: not-allowed;
 }
 
 /* Rest of your existing CSS remains the same */

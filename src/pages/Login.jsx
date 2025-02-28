@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const Login = () => {
@@ -8,27 +8,40 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    const storedEmail = localStorage.getItem("email");
+    if (storedEmail) {
+      setEmail(storedEmail);
+    }
+  }, []);
+
   const handleLogin = async () => {
+    setIsLoading(true);
+    setError("");
+
     try {
-      const response = await fetch("http://localhost:8089/api/login", {
+      const response = await fetch("/api/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-  
+
       if (!response.ok) {
         throw new Error("Failed to login");
       }
-  
+
       const data = await response.json();
-      localStorage.setItem("token", data.token);  // Save the token here
-      navigate("/home");  // Redirect to profile or home page
+      localStorage.setItem("token", data.token); // Сохраняем токен
+      localStorage.setItem("email", email); // Сохраняем email, чтобы подставлять в будущем
+      navigate("/home");
     } catch (error) {
       console.error("Login failed:", error);
       setError("Invalid credentials");
+    } finally {
+      setIsLoading(false);
     }
   };
-  
+
   return (
     <div className="login-container">
       <div className="logo-container flex justify-center">

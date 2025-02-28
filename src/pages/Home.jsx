@@ -1,118 +1,62 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bar } from "react-chartjs-2";
+import { Chart, registerables } from "chart.js";
+import annotationPlugin from "chartjs-plugin-annotation";
 import "chart.js/auto";
 import logo from "../assets/Ala-too_International_University_Seal.png";
 import profileIcon from "../assets/free-icon-student-4211262.png";
 import logoutIcon from "../assets/exit.png";
 import "./Home.css";
 
-const API_URL = "http://localhost:8089";
+Chart.register(...registerables, annotationPlugin);
 
 const Home = () => {
   const navigate = useNavigate();
-  const [selectedCourses, setSelectedCourses] = useState({});
-  const [courseScores, setCourseScores] = useState({});
-  const [showChart, setShowChart] = useState(false);
   const [subjects, setSubjects] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [selectedSubjects, setSelectedSubjects] = useState([""]);
+  const [scores, setScores] = useState({});
+  const [visualizationData, setVisualizationData] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [exportQuality, setExportQuality] = useState("high");
   const [newSubjectName, setNewSubjectName] = useState("");
-  const [courseBoxes, setCourseBoxes] = useState([1, 2, 3]);
 
   const token = localStorage.getItem("token");
 
-  // Загрузка предметов
   useEffect(() => {
+    if (!token) {
+      navigate("/login");
+      return;
+    }
+
     const fetchSubjects = async () => {
       try {
-        const response = await fetch(`${API_URL}/subjects`, {
+        const response = await fetch("/api/subjects", {
           headers: {
             Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
         });
-        if (!response.ok) {
-          throw new Error("Network response was not ok");
-        }
+
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        
         const data = await response.json();
-        setSubjects(data);
+        setSubjects(Array.isArray(data) ? data : []);
       } catch (error) {
-        setError(error);
-      } finally {
-        setLoading(false);
+        console.error("Error loading subjects:", error);
+        setError(error.message || "Failed to load subjects");
       }
     };
 
     fetchSubjects();
-  }, [token]);
+  }, [navigate, token]);
 
-  // Сохранение данных на сервер
-  const saveData = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/save-data`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          selectedCourses: Object.fromEntries(
-            Object.entries(selectedCourses).map(([key, value]) => [key, value.id])
-          ),
-          courseScores,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to save data");
-      }
-
-      const result = await response.json();
-      console.log("Data saved successfully:", result);
-    } catch (error) {
-      console.error("Error saving data:", error);
-      setError(error);
-    }
-  };
-
-  // Обработчик выбора курса
-  const handleCourseSelect = (boxIndex, subjectId) => {
-    const selectedSubject = subjects.find((subject) => subject.id === parseInt(subjectId));
-    setSelectedCourses({ ...selectedCourses, [boxIndex]: selectedSubject });
-  };
-
-  // Обработчик изменения баллов
-  const handleScoreChange = (boxIndex, value) => {
-    if (value >= 0 && value <= 100) {
-      setCourseScores({ ...courseScores, [boxIndex]: value });
-    }
-  };
-
-  // Обработчик визуализации
-  const handleVisualize = () => {
-    if (Object.keys(selectedCourses).length === courseBoxes.length && Object.keys(courseScores).length === courseBoxes.length) {
-      const isValid = Object.values(selectedCourses).every((course) => course && course.id);
-      if (!isValid) {
-        alert("Please select valid courses.");
-        return;
-      }
-
-      setShowChart(true);
-      saveData();
-    } else {
-      alert(`Please select exactly ${courseBoxes.length} courses and enter their grades.`);
-    }
-  };
-
-  // Обработчик добавления нового предмета
   const handleAddSubject = async () => {
-    if (!newSubjectName.trim()) {
-      alert("Please enter a subject name.");
-      return;
-    }
+    if (!newSubjectName.trim()) return alert("Please enter a subject name.");
 
     try {
-      const response = await fetch(`${API_URL}/subjects`, {
+      const response = await fetch("/api/subjects", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -121,119 +65,225 @@ const Home = () => {
         body: JSON.stringify({ name: newSubjectName }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to add subject");
-      }
-
+      if (!response.ok) throw new Error("Failed to add subject");
+      
       const newSubject = await response.json();
       setSubjects([...subjects, newSubject]);
       setNewSubjectName("");
     } catch (error) {
-      setError(error);
+      console.error("Error adding subject:", error);
+      setError(error.message || "Failed to add subject");
     }
   };
 
-  // Обработчик добавления нового окна для курса
-  const handleAddCourseBox = () => {
-    const newBoxIndex = courseBoxes.length + 1;
-    setCourseBoxes([...courseBoxes, newBoxIndex]);
-    setSelectedCourses({ ...selectedCourses, [newBoxIndex]: null });
-    setCourseScores({ ...courseScores, [newBoxIndex]: "" });
+  const handleSubjectSelect = (index, subjectName) => {
+    const newSelection = [...selectedSubjects];
+    newSelection[index] = subjectName;
+    setSelectedSubjects(newSelection);
   };
 
-  // Расчет данных для графика
-  const calculateCompetencyScores = () => {
-    if (Object.keys(selectedCourses).length === 0) return { labels: [], datasets: [] };
+  const handleScoreChange = (subjectName, value) => {
+    setScores(prev => ({
+      ...prev,
+      [subjectName]: Math.min(100, Math.max(0, Number(value) || 0)),
+    }));
+  };
 
-    const sharedScore =
-      Object.values(courseScores).length > 0
-        ? Object.values(courseScores).reduce((sum, score) => sum + Number(score), 0) /
-          Object.values(courseScores).length
-        : 0;
+  const handleAddCourse = () => {
+    setSelectedSubjects([...selectedSubjects, ""]);
+  };
 
-    const uniqueCompetencyScores = Object.entries(selectedCourses).flatMap(([boxIndex, course]) => {
-      const score = courseScores[boxIndex] || 0;
-      if (!course.uniqueCompetences || course.uniqueCompetences.length === 0) {
-        return [];
-      }
-      return course.uniqueCompetences.map((comp) => ({
-        competency: comp,
-        score: Number(score) || 0,
-      }));
-    });
+  const handleRemoveCourse = (index) => {
+    const newSubjects = [...selectedSubjects];
+    newSubjects.splice(index, 1);
+    setSelectedSubjects(newSubjects);
+  };
 
-    const chartData = {
-      labels: ["Shared Competency", ...uniqueCompetencyScores.map((comp) => comp.competency)],
-      datasets: [
-        {
-          label: "Competency Scores",
-          data: [sharedScore, ...uniqueCompetencyScores.map((comp) => comp.score)],
-          backgroundColor: [
-            "#003087",
-            ...uniqueCompetencyScores.map(() => `rgba(0, 48, 135, ${Math.random() * 0.7 + 0.3})`),
-          ],
-          borderColor: ["#002266", ...uniqueCompetencyScores.map(() => "#002266")],
-          borderWidth: 1,
+  const handleVisualize = async () => {
+    if (!token) return navigate("/login");
+    
+    if (selectedSubjects.some(subject => !subject || !scores[subject])) {
+      return setError("Please select courses and enter their grades.");
+    }
+
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch("/api/visualize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
-      ],
-    };
+        body: JSON.stringify(selectedSubjects.map(subjectName => ({
+          subjectName,
+          score: scores[subjectName] || 0,
+        }))),
+      });
 
-    return chartData;
+      if (response.status === 401) {
+        localStorage.removeItem("token");
+        return navigate("/login");
+      }
+
+      if (!response.ok) throw new Error(await response.text());
+      
+      setVisualizationData(await response.json());
+    } catch (err) {
+      console.error("Visualization error:", err);
+      setError(err.message || "Failed to visualize data");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error.message}</div>;
+  const handleDownload = async () => {
+    try {
+      const params = new URLSearchParams({
+        format: "png",
+        quality: exportQuality === "high" ? 1.0 : exportQuality === "medium" ? 0.7 : 0.5,
+        width: exportQuality === "high" ? 2400 : exportQuality === "medium" ? 1800 : 1200,
+        height: 1200,
+        devicePixelRatio: exportQuality === "high" ? 2.0 : 1.5,
+      });
+
+      const response = await fetch(`/api/diagram/export?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) throw new Error(await response.text());
+
+      const blob = await response.blob();
+      if (blob.size === 0) throw new Error("Empty image file");
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `competency-diagram-${new Date().toISOString()}.png`;
+      
+      const img = new Image();
+      img.onload = () => {
+        if (img.naturalWidth < 100) throw new Error("Invalid image generated");
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      };
+      img.src = url;
+      
+    } catch (err) {
+      console.error("Download failed:", err);
+      setError(err.message || "Failed to download diagram");
+    }
+  };
+
+  const chartData = visualizationData && {
+    labels: [
+      ...Object.keys(visualizationData.commonSkills),
+      ...Object.keys(visualizationData.singleSkills),
+    ],
+    datasets: [{
+      label: "Competency Scores",
+      data: [
+        ...Object.values(visualizationData.commonSkills),
+        ...Object.values(visualizationData.singleSkills),
+      ],
+      backgroundColor: [
+        ...Object.keys(visualizationData.commonSkills).map(() => "#003087"),
+        ...Object.keys(visualizationData.singleSkills).map((_, i) => 
+          `hsl(${(i * 360) / 5}, 70%, 50%)`
+        ),
+      ],
+      borderColor: "#002266",
+      borderWidth: 1,
+    }],
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { enabled: true },
+      annotation: {
+        annotations: {
+          medianLine: {
+            type: "line",
+            yMin: 50,
+            yMax: 50,
+            borderColor: "#FF5733",
+            borderWidth: 2,
+            borderDash: [5, 5],
+            label: {
+              content: "Median 50",
+              enabled: true,
+              position: "end",
+              font: { size: 14 },
+            },
+          },
+          highLevelLine: {
+            type: "line",
+            yMin: 80,
+            yMax: 80,
+            borderColor: "#2ECC71",
+            borderWidth: 2,
+            label: {
+              content: "High Level 80",
+              enabled: true,
+              position: "end",
+              font: { size: 14 },
+            },
+          },
+        },
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100,
+        title: { display: true, text: "Competency Score (%)", font: { size: 16 } },
+        ticks: { font: { size: 14 } },
+      },
+      x: {
+        ticks: {
+          font: { size: 12 },
+          autoSkip: false,
+          maxRotation: 45,
+          minRotation: 45,
+          padding: 20,
+        },
+        title: { display: true, text: "Skills", font: { size: 16 } },
+      },
+    },
+  };
 
   return (
     <div className="home-container">
       <header className="header">
-        <img
-          src={logo}
-          alt="Ala-Too University Logo"
-          className="university-logo"
-          onClick={() => navigate("/")}
-        />
+        <img src={logo} alt="University Logo" className="university-logo" />
         <div className="header-icons">
-          <img
-            src={profileIcon}
-            alt="Profile"
-            className="icon"
-            onClick={() => navigate("/profile")}
-          />
-          <img
-            src={logoutIcon}
-            alt="Logout"
-            className="icon"
-            onClick={() => {
-              localStorage.removeItem("token");
-              navigate("/login");
-            }}
-          />
+          <img src={profileIcon} alt="Profile" className="icon" onClick={() => navigate("/profile")} />
+          <img src={logoutIcon} alt="Logout" className="icon" onClick={() => {
+            localStorage.removeItem("token");
+            navigate("/login");
+          }} />
         </div>
       </header>
 
       <div className="course-selection">
         <h2 className="section-title">Select Courses and Their Grades</h2>
-        <div className="add-subject">
-          <input
-            type="text"
-            placeholder="Enter new subject name"
-            value={newSubjectName}
-            onChange={(e) => setNewSubjectName(e.target.value)}
-          />
-          <button onClick={handleAddSubject}>+ Add Subject</button>
-        </div>
         <div className="course-grid">
-          {courseBoxes.map((boxIndex) => (
-            <div key={boxIndex} className="course-box">
+          {selectedSubjects.map((subject, index) => (
+            <div key={index} className="course-box">
               <select
+                value={subject || ""}
+                onChange={(e) => handleSubjectSelect(index, e.target.value)}
                 className="course-select"
-                value={selectedCourses[boxIndex]?.id || ""}
-                onChange={(e) => handleCourseSelect(boxIndex, e.target.value)}
               >
                 <option value="">Select a course</option>
                 {subjects.map((subject) => (
-                  <option key={subject.id} value={subject.id}>
+                  <option key={subject.id} value={subject.name}>
                     {subject.name}
                   </option>
                 ))}
@@ -241,50 +291,91 @@ const Home = () => {
               <input
                 type="number"
                 className="score-input"
-                placeholder="Enter grade (0-100)"
+                placeholder="Grade (0-100)"
                 min="0"
                 max="100"
-                value={courseScores[boxIndex] || ""}
-                onChange={(e) => handleScoreChange(boxIndex, e.target.value)}
+                value={scores[subject] || ""}
+                onChange={(e) => handleScoreChange(subject, e.target.value)}
+                disabled={!subject}
               />
+              {index > 0 && (
+                <button 
+                  className="remove-course-button"
+                  onClick={() => handleRemoveCourse(index)}
+                >
+                  ×
+                </button>
+              )}
             </div>
           ))}
-          <button className="add-course-box" onClick={handleAddCourseBox}>
-            + Add Course
+        </div>
+
+        <div className="course-controls">
+          <button
+            className="add-course-button"
+            onClick={handleAddCourse}
+            disabled={selectedSubjects.length >= 5}
+          >
+            Add Course
+          </button>
+
+          <button
+            className="visualize-button"
+            onClick={handleVisualize}
+            disabled={loading || selectedSubjects.some(s => !s || !scores[s])}
+          >
+            {loading ? "Processing..." : "Visualize"}
           </button>
         </div>
-        <button
-          className="visualize-button"
-          onClick={handleVisualize}
-          disabled={Object.keys(selectedCourses).length !== courseBoxes.length || Object.keys(courseScores).length !== courseBoxes.length}
-        >
-          Visualize Competencies
+
+        {error && <div className="error-message">{error}</div>}
+      </div>
+
+      <div className="add-subject">
+        <input
+          type="text"
+          value={newSubjectName}
+          onChange={(e) => setNewSubjectName(e.target.value)}
+          placeholder="New subject name"
+          className="subject-input"
+        />
+        <button onClick={handleAddSubject} className="add-subject-button">
+          Add Subject
         </button>
       </div>
 
-      {showChart && (
+      {visualizationData && (
         <div className="chart-container">
-          <h2 className="chart-title">Competency Scores</h2>
-          <Bar
-            data={calculateCompetencyScores()}
-            options={{
-              responsive: true,
-              plugins: {
-                legend: {
-                  position: "top",
-                },
-                title: {
-                  display: false,
-                },
-              },
-              scales: {
-                y: {
-                  beginAtZero: true,
-                  max: 100,
-                },
-              },
-            }}
-          />
+          <h2 className="chart-title">Competency Analysis</h2>
+          <div style={{ position: "relative", height: "60vh", width: "80vw" }}>
+            <Bar data={chartData} options={chartOptions} />
+          </div>
+
+          <div className="export-controls">
+            <select
+              value={exportQuality}
+              onChange={(e) => setExportQuality(e.target.value)}
+              className="quality-select"
+            >
+              <option value="high">High Quality</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+            <button onClick={handleDownload} className="download-button">
+              Download Diagram
+            </button>
+          </div>
+
+          <div className="legend-container">
+            <div className="legend-item">
+              <span className="legend-color common"></span>
+              Common Skills (Grouped)
+            </div>
+            <div className="legend-item">
+              <span className="legend-color single"></span>
+              Single Skills (Individual)
+            </div>
+          </div>
         </div>
       )}
     </div>

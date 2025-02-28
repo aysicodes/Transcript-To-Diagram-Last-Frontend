@@ -17,6 +17,7 @@
     "@tailwindcss/vite": "^4.0.3",
     "axios": "^1.7.9",
     "chart.js": "^4.4.7",
+    "chartjs-plugin-annotation": "^3.1.0",
     "jwt-decode": "^3.1.2",
     "lucide-react": "^0.474.0",
     "react": "^19.0.0",
