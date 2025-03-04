@@ -331,7 +331,7 @@ const Home = () => {
         {error && <div className="error-message">{error}</div>}
       </div>
 
-      <div className="add-subject">
+      {/* <div className="add-subject">
         <input
           type="text"
           value={newSubjectName}
@@ -342,7 +342,7 @@ const Home = () => {
         <button onClick={handleAddSubject} className="add-subject-button">
           Add Subject
         </button>
-      </div>
+      </div> */}
 
       {visualizationData && (
         <div className="chart-container">
